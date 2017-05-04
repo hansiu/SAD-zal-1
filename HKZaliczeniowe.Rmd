@@ -1,8 +1,22 @@
+---
+title: "HKZaliczeniowe1"
+author: "Hanna Kranas"
+date: "25 kwietnia 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, include=FALSE}
 library(stringr)
 library(HMM)
 
 Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
+```
 
+```{r, echo = FALSE}
 wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
   plik <- readLines(nazwa_pliku) #wczytuje plik
   Encoding(plik) <- 'UTF-8' #zmieniam kodowanie na odpowiednie
@@ -20,7 +34,7 @@ wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
 
 daj_symbole <- function(obserwacja){
   cat('dlugosc obserwacji: ')
-  cat(obserwacja)
+  cat(length(obserwacja))
   #ta funkcja ekstrachuje wszystkie unikalne elementy - czyli dla nas symbole
   symbole <- unique(obserwacja)
   return(symbole)
@@ -28,20 +42,20 @@ daj_symbole <- function(obserwacja){
 
 symuluj <- function(obserwacja,stany){
   #ta funkcja robi hmm i baumaWelcha (uczy siê)
-  cat(length(obserwacja))
   symbole <- daj_symbole(obserwacja)
   macierz_emisji <- numeric(0)
   for(i in 1:length(stany)){
     x <- rep(1/length(symbole),length(symbole))
-    x[i] <- x[i] - 1/100000000 #dajemy ma³e zaburzenie
-    x[i+1] <- x[i+1] + 1/100000000 #tu te¿, ¿eby siê nadal sumowa³y w wierszu do 1
+    x <- x +  rnorm(length(symbole),0,1/1000000) #dajemy ma³e zaburzenie
+    x <- abs(x)/sum(x) #i poprawiamy zeby sie sumowaly do jedynki dalej
     macierz_emisji <- c(macierz_emisji,x)
   }
+  print('Macierz emisji gotowa')
   hmm <- initHMM(stany,symbole,NULL,NULL,matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
+  print('Hmm zrobiony')
   wynik <- baumWelch(hmm,obserwacja)
-  post_prwdp <- posterior(wynik$hmm, obserwacja)
-  plot(post_prwdp["pierwszy",], type = 'l')
-  return(wynik) #co zwracaæ? oto jest pytanie
+  #post_prwdp <- posterior(wynik$hmm, obserwacja)
+  return(wynik) #zwracam baumaWelcha calego
 }
 
 litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
@@ -56,16 +70,16 @@ slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   plik <- unlist(strsplit(przygotowany_plik," "))
   obserwacja <- str_sub(plik[plik!=""],start=-3)
   stany <- c('pierwszy','drugi','trzeci','czwarty','pi¹ty')
-  wynik <- symuluj(obserwacja,stany)
-  return(wynik)
+  return(daj_symbole(obserwacja))
+  #wynik <- symuluj(obserwacja,stany)
+  #return(wynik)
 }
 
 testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', polskie = TRUE){
   if(litery_nie_slowa){
-  wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
+  wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie)[(1:4000)])}
   else {
-  wynik <- slowa(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
-  # Error in if (d < delta) { : missing value where TRUE/FALSE needed daje slowa?
+  wynik <- slowa(wczytaj_i_przygotuj(nazwa_pliku, polskie)[(1:4000)])}
   return(wynik)
 }
 
@@ -92,17 +106,23 @@ testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', pol
 #zasymulowac tym wyuczonym
 
 #raport np w markdownie i do pdf/html
-
+```
+# Litery z polskimi znakami
+```{r}
 #litery
 wyniki <- testuj() # z polskimi
+save(wyniki, file = "litery-polskie.RData")
 grupy <- wyniki$hmm$emissionProbs["pierwszy",]-wyniki$hmm$emissionProbs["drugi",]
 #jak ujemne to bardziej drugi
 print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
-#--------------------
+```
+# Litery bez polskich znaków
+```{r}
 wyniki <- testuj(polskie = FALSE) #bez polskich
+save(wyniki, file = "litery-bezpolskie.RData")
 grupy <- wyniki$hmm$emissionProbs["pierwszy",]-wyniki$hmm$emissionProbs["drugi",]
 #jak ujemne to bardziej drugi
 print('To jest grupa pierwsza:')
@@ -111,11 +131,35 @@ print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
 #mozna jeszcze plotowac posteriori odjete i patrzec gdzie wiecej samoglosek
 #podobnie z sufixami
-#slowa
+```
+# S³owa, bez polskich znaków
+```{r}
+symbole <- slowa()
+print(length(symbole))
 #wyniki <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
 #head(wyniki$hmm$emissionProbs)
-#pytania
-#te dziwne znaki usuniete w notepadzie (pokazac screeny)
-#jak z tym lekkim zaburzeniem
-#czy jak nie dzieli w zadnym przypadku na samogloski/spolgloski to sie martwic czy to byla podpucha ze tak wyjdzie
-#co z tym bledem ze slow
+  # Error in if (d < delta) { : missing value where TRUE/FALSE needed
+
+```
+
+
+## Pytania:
+#te dziwne znaki usuniête w notepadzie, bo zarówno R jak i python nie umia³y ich rozró¿niæ - czy to ok?
+
+![R - nie](eR.PNG)
+![Python - nie](python.PNG)
+![Notepad++ na ratunek!](notepad.PNG)
+
+
+
+
+
+#przy s³owach b³¹d (patrz: wy¿ej)
+[Ju¿ coœ szuka³am na stackoverflow 1](http://stackoverflow.com/questions/39593901/hmm-error-in-if-d-delta-missing-value-where-true-false-needed "Ju¿ coœ szuka³am 1")
+
+
+[Ju¿ coœ szuka³am na stackoverflow 2](http://stackoverflow.com/questions/10673104/error-in-hmm-package-in-r "Ju¿ coœ szuka³am 2")
+
+#zrobic dla 3-4tys znakow (czyli w testuj uciete [(1:4000)])
+#jesli chodzi o slowa, to mozliwe ze za male sa te prawdopodobienstwa ale jeszcze zobaczymy co wymyslimy jutro - moze jakies klastrowanie? moze jakies podmienianie?
+# albo zaraportowaæ i napisaæ ¿e sufiksy 2literowe lub zrobic klastrowanie sufiksów
