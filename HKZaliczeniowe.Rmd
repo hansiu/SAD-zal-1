@@ -47,12 +47,13 @@ symuluj <- function(obserwacja,stany){
   for(i in 1:length(stany)){
     x <- rep(1/length(symbole),length(symbole))
     x <- x +  rnorm(length(symbole),0,1/1000000) #dajemy ma³e zaburzenie
-    x <- abs(x)/sum(x) #i poprawiamy zeby sie sumowaly do jedynki dalej
+    x <- abs(x)/sum(abs(x)) #i poprawiamy zeby sie sumowaly do jedynki dalej
     macierz_emisji <- c(macierz_emisji,x)
   }
   print('Macierz emisji gotowa')
   hmm <- initHMM(stany,symbole,NULL,NULL,matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
   print('Hmm zrobiony')
+  print(hmm)
   wynik <- baumWelch(hmm,obserwacja)
   #post_prwdp <- posterior(wynik$hmm, obserwacja)
   return(wynik) #zwracam baumaWelcha calego
@@ -68,11 +69,12 @@ litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
 slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
-  obserwacja <- str_sub(plik[plik!=""],start=-3)
-  stany <- c('pierwszy','drugi','trzeci','czwarty','pi¹ty')
-  return(daj_symbole(obserwacja))
-  #wynik <- symuluj(obserwacja,stany)
-  #return(wynik)
+  obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
+  print(obserwacja)
+  #stany <- c('pierwszy','drugi','trzeci','czwarty','piaty')
+  stany <- c('pierwszy','drugi')
+  wynik <- symuluj(obserwacja,stany)
+  return(wynik)
 }
 
 testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', polskie = TRUE){
@@ -110,9 +112,9 @@ testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', pol
 # Litery z polskimi znakami
 ```{r}
 #litery
-wyniki <- testuj() # z polskimi
-save(wyniki, file = "litery-polskie.RData")
-grupy <- wyniki$hmm$emissionProbs["pierwszy",]-wyniki$hmm$emissionProbs["drugi",]
+lit_polskie <- testuj() # z polskimi
+save(lit_polskie, file = "litery-polskie.RData")
+grupy <- lit_polskie$hmm$emissionProbs["pierwszy",]-lit_polskie$hmm$emissionProbs["drugi",]
 #jak ujemne to bardziej drugi
 print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
@@ -121,45 +123,49 @@ cat(names(grupy[grupy<0]))
 ```
 # Litery bez polskich znaków
 ```{r}
-wyniki <- testuj(polskie = FALSE) #bez polskich
-save(wyniki, file = "litery-bezpolskie.RData")
-grupy <- wyniki$hmm$emissionProbs["pierwszy",]-wyniki$hmm$emissionProbs["drugi",]
+lit_bezpolskie <- testuj(polskie = FALSE) #bez polskich
+save(lit_bezpolskie, file = "litery-bezpolskie.RData")
+grupy <- lit_bezpolskie$hmm$emissionProbs["pierwszy",]-lit_bezpolskie$hmm$emissionProbs["drugi",]
 #jak ujemne to bardziej drugi
 print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
 #mozna jeszcze plotowac posteriori odjete i patrzec gdzie wiecej samoglosek
-#podobnie z sufixami
 ```
 # S³owa, bez polskich znaków
-```{r}
-symbole <- slowa()
-print(length(symbole))
-#wyniki <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
-#head(wyniki$hmm$emissionProbs)
-  # Error in if (d < delta) { : missing value where TRUE/FALSE needed
-
+```{r, eval = FALSE}
+slowa_bezpolskie <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
+save(slowa_bezpolskie, file = "slowa.RData")
+head(slowa_bezpolskie$hmm$emissionProbs)
 ```
+#Przygotowanie danych  
 
-
-## Pytania:
-#te dziwne znaki usuniête w notepadzie, bo zarówno R jak i python nie umia³y ich rozró¿niæ - czy to ok?
+Poniewa¿ ani R ani Python nie radzi³y sobie z usuwaniem niektórych znaków, usuniête zosta³y w notepadzie.  
 
 ![R - nie](eR.PNG)
 ![Python - nie](python.PNG)
 ![Notepad++ na ratunek!](notepad.PNG)
 
+Przygotowanie danych wykonane jednak zosta³o g³ównie w R:  
+```{r, eval = FALSE}
+wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
+  plik <- readLines(nazwa_pliku) #wczytuje plik
+  Encoding(plik) <- 'UTF-8' #zmieniam kodowanie na odpowiednie
+  plik <- tryCatch(plik[1:which(plik == '-----')-1],error = function(e) plik, finally= {}) #usuwam wszystko po ----- (jeœli jest w pliku)
+  plik <- gsub("[[:punct:]…—[:digit:]]", "", plik) #usuwam wszystkie znaki przestankowe
+  plik <- tolower(plik[plik!=""]) #usuwam  puste
+  if(polskie){
+    cat('POLSKIE LITERY! ¹ê!')
+  } else {
+    plik <- iconv(plik,from="UTF-8",to="ASCII//TRANSLIT") #bez polskich
+  }
+  return(plik)
+}
+```
 
 
-
-
-#przy s³owach b³¹d (patrz: wy¿ej)
-[Ju¿ coœ szuka³am na stackoverflow 1](http://stackoverflow.com/questions/39593901/hmm-error-in-if-d-delta-missing-value-where-true-false-needed "Ju¿ coœ szuka³am 1")
-
-
-[Ju¿ coœ szuka³am na stackoverflow 2](http://stackoverflow.com/questions/10673104/error-in-hmm-package-in-r "Ju¿ coœ szuka³am 2")
-
-#zrobic dla 3-4tys znakow (czyli w testuj uciete [(1:4000)])
+```{r, include = FALSE, echo = FALSE}
 #jesli chodzi o slowa, to mozliwe ze za male sa te prawdopodobienstwa ale jeszcze zobaczymy co wymyslimy jutro - moze jakies klastrowanie? moze jakies podmienianie?
 # albo zaraportowaæ i napisaæ ¿e sufiksy 2literowe lub zrobic klastrowanie sufiksów
+```
