@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, echo=FALSE, include=FALSE}
 library(stringr)
 library(HMM)
+library(tm)
 
 Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
 ```
@@ -21,7 +22,7 @@ wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
   plik <- readLines(nazwa_pliku) #wczytuje plik
   Encoding(plik) <- 'UTF-8' #zmieniam kodowanie na odpowiednie
   plik <- tryCatch(plik[1:which(plik == '-----')-1],error = function(e) plik, finally= {}) #usuwam wszystko po ----- (jeœli jest w pliku)
-  plik <- gsub("[[:punct:]…—[:digit:]]", "", plik) #usuwam wszystkie znaki przestankowe
+  plik <- gsub("[[:punct:]…—\t[:digit:]]", "", plik) #usuwam wszystkie znaki przestankowe
   plik <- tolower(plik[plik!=""]) #usuwam  puste
   if(polskie){
     cat('POLSKIE LITERY! ¹ê!')
@@ -29,7 +30,6 @@ wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
     plik <- iconv(plik,from="UTF-8",to="ASCII//TRANSLIT") #bez polskich
   }
   return(plik)
-  #co z sytuacjami kiedy mamy "taby" - kilka spacji? usuwac czy zostawic?
 }
 
 daj_symbole <- function(obserwacja){
@@ -42,8 +42,9 @@ daj_symbole <- function(obserwacja){
 
 symuluj <- function(obserwacja,stany){
   #ta funkcja robi hmm i baumaWelcha (uczy siê)
+  
   symbole <- daj_symbole(obserwacja)
-  macierz_emisji <- numeric(0)
+  macierz_emisji <- c()
   for(i in 1:length(stany)){
     x <- rep(1/length(symbole),length(symbole))
     x <- x +  rnorm(length(symbole),0,1/1000000) #dajemy ma³e zaburzenie
@@ -52,15 +53,25 @@ symuluj <- function(obserwacja,stany){
   }
   print('Macierz emisji gotowa')
   hmm <- initHMM(stany,symbole,NULL,NULL,matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
+  #prob <- function (x) {x / sum (x)}  # Makes it a probability (it sums to 1)
+  #symbole <- c(letters," ")
+#hmm <- initHMM (stany, symbole, startProbs=(prob (runif (length(stany)))),
+
+					#transProbs=apply (matrix (runif (length(stany)*length(stany)), length(stany)), 1, prob),
+
+					#emissionProbs=apply (matrix (runif (length(stany)*length(symbole)), length(stany)), 1, prob))
   print('Hmm zrobiony')
   print(hmm)
-  wynik <- baumWelch(hmm,obserwacja)
+  wynik <- baumWelch(hmm,obserwacja)#zwiekszanie maxIterations nie pomaga
   #post_prwdp <- posterior(wynik$hmm, obserwacja)
   return(wynik) #zwracam baumaWelcha calego
 }
 
+
+
 litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+  obserwacja <- obserwacja[!is.na(obserwacja)]
   stany <- c('pierwszy','drugi')
   wynik <- symuluj(obserwacja,stany)
   return(wynik)
@@ -70,6 +81,7 @@ slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
   obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
+  obserwacja <- obserwacja[!is.na(obserwacja)]
   print(obserwacja)
   #stany <- c('pierwszy','drugi','trzeci','czwarty','piaty')
   stany <- c('pierwszy','drugi')
@@ -79,9 +91,9 @@ slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
 
 testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', polskie = TRUE){
   if(litery_nie_slowa){
-  wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie)[(1:4000)])}
+  wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
   else {
-  wynik <- slowa(wczytaj_i_przygotuj(nazwa_pliku, polskie)[(1:4000)])}
+  wynik <- slowa(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
   return(wynik)
 }
 
