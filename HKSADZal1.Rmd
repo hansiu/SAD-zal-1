@@ -1,0 +1,190 @@
+---
+title: "HKSADZal1"
+author: "Hanna Kranas"
+date: "6 maja 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(stringr)
+library(HMM)
+library(tm)
+
+Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
+```
+
+```{r, echo = FALSE}
+wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
+  docs <- SimpleCorpus(DirSource("D:/studiaIIstopien/SADII/SAD-zal-1",encoding = 'UTF-8'),control = list(language = "pl"))
+docs <- tm_map(docs,removePunctuation)
+docs <- tm_map(docs,removeNumbers)
+docs <- tm_map(docs,stripWhitespace)
+plik <- tolower(as.character(docs[[nazwa_pliku]]))
+plik <- gsub ("[–….—\t-]", "", plik)
+plik <- plik[plik!=""] #usuwam  puste
+  if(polskie){
+    cat('POLSKIE LITERY! ¹ê!')
+  } else {
+    plik <- iconv(plik,from="UTF-8",to="ASCII//TRANSLIT") #bez polskich
+  }
+  return(plik)
+}
+```
+```{r}
+daj_symbole <- function(obserwacja){
+  cat('dlugosc obserwacji: ')
+  cat(length(obserwacja))
+  #ta funkcja ekstrachuje wszystkie unikalne elementy - czyli dla nas symbole
+  symbole <- sort(unique(obserwacja))
+  return(symbole)
+}
+```
+```{r}
+prob <- function (x) {x / sum (x)}
+
+symuluj <- function(obserwacja,stany){
+  #ta funkcja robi hmm i baumaWelcha (uczy siê)
+  
+  symbole <- daj_symbole(obserwacja)
+  macierz_emisji <- c()
+  for(i in 1:length(stany)){
+    x <- rep(1/length(symbole),length(symbole))
+    x <- x +  rnorm(length(symbole),0,1/1000000) #dajemy ma³e zaburzenie
+    x <- abs(x)/sum(abs(x)) #i poprawiamy zeby sie sumowaly do jedynki dalej
+    macierz_emisji <- c(macierz_emisji,x)
+  }
+  print('Macierz emisji gotowa')
+  hmm <- initHMM (stany, symbole, startProbs=(prob (runif (length(stany)))),
+
+              transProbs=apply (matrix (runif (length(stany)*length(stany)), length(stany)), 1, prob),
+
+             emissionProbs=matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
+  print('Hmm zrobiony')
+  print(hmm)
+  wynik <- baumWelch(hmm,obserwacja)
+  #post_prwdp <- posterior(wynik$hmm, obserwacja)
+  return(wynik) #zwracam baumaWelcha calego
+}
+
+
+
+litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
+  obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+  obserwacja <- obserwacja[!is.na(obserwacja)]
+  stany <- c('1','2')
+  wynik <- symuluj(obserwacja,stany)
+  return(wynik)
+}
+
+slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
+  #s³owa wymagaj¹ trochê wiêcej przygotowañ
+  plik <- unlist(strsplit(przygotowany_plik," "))
+  obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
+  obserwacja <- obserwacja[!is.na(obserwacja)]
+  #print(obserwacja)
+  stany <- c('1','2','3','4','5')
+  #stany <- c('pierwszy','drugi')
+  wynik <- symuluj(obserwacja,stany)
+  return(wynik)
+}
+
+testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', polskie = TRUE){
+  if(litery_nie_slowa){
+  wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
+  else {
+  wynik <- slowa(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
+  return(wynik)
+}
+
+#litery
+#zrobic observation - literami, na ich podstawie wygenerowac wystepujace litery.
+#sprawdzic co z polskimi znakami
+#przygotowac 2 stany
+#zrobic hmm
+#dac bauma-welsha
+#obejrzec
+#pomyslec jak zwizualizowac
+
+#s³owa
+#jakims str_sub ze stringr albo ze stringi wyciagnac sufiksy 3 literowe (sprawdzic jak w przypadku krotszych slow!)
+#juz mamy przygotowane observation w tym momencie
+#przygotowac 5 stanow
+#hmm
+#baum-welsh
+#obejrzec
+#wizualizacja
+
+#jak wytrenowanym zrobic nowy zbior - poszukac
+#wybrac wiersze
+#zasymulowac tym wyuczonym
+
+#raport np w markdownie i do pdf/html
+```
+# Litery z polskimi znakami
+```{r}
+#litery
+system.time(lit_polskie <- testuj()) # z polskimi
+save(lit_polskie, file = "litery-polskie.RData")
+grupy <- lit_polskie$hmm$emissionProbs["1",]-lit_polskie$hmm$emissionProbs["2",]
+#jak ujemne to bardziej drugi
+print('To jest grupa pierwsza:')
+cat(names(grupy[grupy>=0]))
+print('To jest grupa druga:')
+cat(names(grupy[grupy<0]))
+xyplot (lit_polskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_polskie$hmm$emissionProbs))), type="h")
+xyplot (lit_polskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_polskie$hmm$emissionProbs))), type="h")
+```
+# Litery bez polskich znaków
+```{r}
+lit_bezpolskie <- testuj(polskie = FALSE) #bez polskich
+save(lit_bezpolskie, file = "litery-bezpolskie.RData")
+grupy <- lit_bezpolskie$hmm$emissionProbs["1",]-lit_bezpolskie$hmm$emissionProbs["2",]
+#jak ujemne to bardziej drugi
+print('To jest grupa pierwsza:')
+cat(names(grupy[grupy>=0]))
+print('To jest grupa druga:')
+cat(names(grupy[grupy<0]))
+xyplot (lit_bezpolskie$hmm$emissionProbs[1,] ~ c(1:27), scales=list(x=list(at=1:27, labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (lit_bezpolskie$hmm$emissionProbs[2,] ~ c(1:27), scales=list(x=list(at=1:27, labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
+#mozna jeszcze plotowac posteriori odjete i patrzec gdzie wiecej samoglosek
+```
+# S³owa, bez polskich znaków
+```{r, eval = FALSE}
+slowa_bezpolskie <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
+save(slowa_bezpolskie, file = "slowa.RData")
+head(slowa_bezpolskie$hmm$emissionProbs)
+```
+#Przygotowanie danych  
+
+Poniewa¿ ani R ani Python nie radzi³y sobie z usuwaniem niektórych znaków, usuniête zosta³y w notepadzie.  
+
+![R - nie](eR.PNG)
+![Python - nie](python.PNG)
+![Notepad++ na ratunek!](notepad.PNG)
+
+Przygotowanie danych wykonane jednak zosta³o g³ównie w R:  
+```{r, eval = FALSE}
+wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
+  plik <- readLines(nazwa_pliku) #wczytuje plik
+  Encoding(plik) <- 'UTF-8' #zmieniam kodowanie na odpowiednie
+  plik <- tryCatch(plik[1:which(plik == '-----')-1],error = function(e) plik, finally= {}) #usuwam wszystko po ----- (jeœli jest w pliku)
+  plik <- gsub("[[:punct:]…—[:digit:]]", "", plik) #usuwam wszystkie znaki przestankowe
+  plik <- tolower(plik[plik!=""]) #usuwam  puste
+  if(polskie){
+    cat('POLSKIE LITERY! ¹ê!')
+  } else {
+    plik <- iconv(plik,from="UTF-8",to="ASCII//TRANSLIT") #bez polskich
+  }
+  return(plik)
+}
+```
+
+
+```{r, include = FALSE, echo = FALSE}
+#jesli chodzi o slowa, to mozliwe ze za male sa te prawdopodobienstwa ale jeszcze zobaczymy co wymyslimy jutro - moze jakies klastrowanie? moze jakies podmienianie?
+# albo zaraportowaæ i napisaæ ¿e sufiksy 2literowe lub zrobic klastrowanie sufiksów
+```
