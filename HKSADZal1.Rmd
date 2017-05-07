@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(stringr)
 library(HMM)
 library(tm)
+library(lattice)
 
 Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
 ```
@@ -104,7 +105,7 @@ slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
   obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
-  obserwacja <- obserwacja[!is.na(obserwacja)][(1:5000)]
+  obserwacja <- obserwacja[!is.na(obserwacja)]
   obserwacja <- klastruj(obserwacja)
   print(table(obserwacja))
   stany <- c('1','2','3','4','5')
