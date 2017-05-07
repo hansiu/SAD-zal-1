@@ -9,6 +9,12 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+#TODO:
+##symulowanie na podstawie wytrenowanych innej poezji
+##litery na wiêcej stanów
+##wizualizacja za³adowanych
+##opisaæ
+
 ```{r, echo=FALSE, include=FALSE}
 library(stringr)
 library(HMM)
@@ -18,7 +24,16 @@ library(lattice)
 Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
 ```
 
-```{r, echo = FALSE}
+#Przygotowanie danych
+
+##Poniewa¿ ani R ani Python nie radzi³y sobie z usuwaniem niektórych znaków, usuniête zosta³y w notepadzie.  
+
+![R - nie](eR.PNG)
+![Python - nie](python.PNG)
+![Notepad++ na ratunek!](notepad.PNG)
+
+##Przygotowanie danych wykonane jednak zosta³o g³ównie w R:  
+```{r, eval = FALSE}
 wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
   docs <- SimpleCorpus(DirSource("D:/studiaIIstopien/SADII/SAD-zal-1",encoding = 'UTF-8'),control = list(language = "pl"))
 docs <- tm_map(docs,removePunctuation)
@@ -35,7 +50,10 @@ plik <- plik[plik!=""] #usuwam  puste
   return(plik)
 }
 ```
-```{r}
+#Kod i symulacje
+
+##Po przygotowaniu pliku, potrzebna nam bêdzie mo¿liwoœæ wyci¹gniêcia symboli z obserwacji:  
+```{r, eval = FALSE}
 daj_symbole <- function(obserwacja){
   cat('dlugosc obserwacji: ')
   cat(length(obserwacja))
@@ -44,45 +62,43 @@ daj_symbole <- function(obserwacja){
   return(symbole)
 }
 ```
-```{r}
-prob <- function (x) {x / sum (x)}
+
+##Tworzenie HMM i trenowanie algorytmem Bauma-Welcha odbywa siê w ten sposób:
+```{r, eval = FALSE}
+prob <- function (x) {x / sum (x)} # funkcja pomocnicza
 
 symuluj <- function(obserwacja,stany){
-  #ta funkcja robi hmm i baumaWelcha (uczy siê)
-  
   symbole <- daj_symbole(obserwacja)
-  macierz_emisji <- c()
+  macierz_emisji <- c() #szykujemy macierz emisji
   for(i in 1:length(stany)){
     x <- rep(1/length(symbole),length(symbole))
     x <- x +  rnorm(length(symbole),0,1/1000000) #dajemy ma³e zaburzenie
     x <- abs(x)/sum(abs(x)) #i poprawiamy zeby sie sumowaly do jedynki dalej
     macierz_emisji <- c(macierz_emisji,x)
   }
-  print('Macierz emisji gotowa')
-  hmm <- initHMM (stany, symbole, startProbs=(prob (runif (length(stany)))),
-
-              transProbs=apply (matrix (runif (length(stany)*length(stany)), length(stany)), 1, prob),
-
-             emissionProbs=matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
-  print('Hmm zrobiony')
-  #print(hmm)
+  #tworzymy hmm'a z nieco-losowymi prawdopodobieñstwami pocz¹tkowymi i przejœæ
+  hmm <- initHMM (stany, symbole, startProbs=(prob (runif (length(stany)))), transProbs=apply (matrix (runif (length(stany)*length(stany)), length(stany)), 1, prob), emissionProbs=matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
+  #uczymy algorytmem Bauma-Welcha
   wynik <- baumWelch(hmm,obserwacja)
   #post_prwdp <- posterior(wynik$hmm, obserwacja)
-  return(wynik) #zwracam baumaWelcha calego
+  return(wynik)
 }
-
-
-
+```
+##Pe³na symulacja dla liter z przygotowanego pliku wygl¹da tak:  
+```{r, eval = FALSE}
 litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   obserwacja <- unlist(strsplit(przygotowany_plik, ''))
   obserwacja <- obserwacja[!is.na(obserwacja)]
-  stany <- c('1','2')
+  stany <- c('1','2') # dwa stany
   wynik <- symuluj(obserwacja,stany)
   return(wynik)
 }
-
+```
+##W przypadku s³ów konieczne by³o klastrowanie, poniewa¿ inaczej algorytm Bauma-Welcha nie dawa³ sobie rady. Sufiksy max-3literowe poklastrowane zosta³y po ich d³ugoœci oraz umiejscowieniu samog³osek/spó³g³osek - ³¹cznie 14 klastrów.
+```{r, eval = FALSE}
 klastruj <- function(obserwacja){
   obserwacja <- gsub ("^[aeyiou][^aeyiou][aeyiou]$", "ara", obserwacja)
+    #obserwacja[grepl("^[aeyiou][^aeyiou][aeyiou]$", obserwacja)] ¿eby sobie wyœwietliæ
   obserwacja <- gsub ("^[aeyiou][aeyiou][aeyiou]$", "aaa", obserwacja)
   obserwacja <- gsub ("^[aeyiou][^aeyiou][^aeyiou]$", "arr", obserwacja)
   obserwacja <- gsub ("^[aeyiou][aeyiou][^aeyiou]$", "aar", obserwacja)
@@ -90,29 +106,31 @@ klastruj <- function(obserwacja){
   obserwacja <- gsub ("^[^aeyiou][aeyiou][aeyiou]$", "raa", obserwacja)
   obserwacja <- gsub ("^[^aeyiou][aeyiou][^aeyiou]$", "rar", obserwacja)
   obserwacja <- gsub ("^[^aeyiou][^aeyiou][^aeyiou]$", "rrr", obserwacja)
-  obserwacja <- gsub ("^[^aeyiou][^aeyiou]$", "rr", obserwacja)
-  obserwacja <- gsub ("^[aeyiou][aeyiou]$", "aa", obserwacja)
-  obserwacja <- gsub ("^[aeyiou][^aeyiou]$", "ar", obserwacja)
-  obserwacja <- gsub ("^[^aeyiou][aeyiou]$", "ra", obserwacja)
-  obserwacja <- gsub ("^[^aeyiou]$", "r", obserwacja)
-  obserwacja <- gsub ("^[aeyiou]$", "a", obserwacja)
-  #obserwacja[grepl("^[aeyiou][^aeyiou][aeyiou]$", obserwacja)]
-  #i potem zamieniac na odpowiedni numerek
+  obserwacja <- gsub ("^[^aeyiou]$", "1", obserwacja)
+  obserwacja <- gsub ("^[aeyiou]$", "1", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][^aeyiou]$", "2", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][aeyiou]$", "2", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][^aeyiou]$", "2", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][aeyiou]$", "2", obserwacja)
   return(obserwacja)
 }
-
+```
+##Sposób symulacji dla s³ów jest nastêpuj¹cy:  
+```{r, eval = FALSE}
 slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
-  obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
+  obserwacja <- unlist(str_sub(plik[plik!=""],start=-3)) #wyci¹gamy max-3literowe sufiksy
   obserwacja <- obserwacja[!is.na(obserwacja)]
   obserwacja <- klastruj(obserwacja)
-  print(table(obserwacja))
-  stany <- c('1','2','3','4','5')
+  print(table(obserwacja)) #wypisujê dla informacji o tym ile jakich sufiksów
+  stany <- c('1','2','3','4','5') # 5 stanów
   wynik <- symuluj(obserwacja,stany)
   return(wynik)
 }
+```
 
+```{r, eval = FALSE, echo = FALSE}
 testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', polskie = TRUE){
   if(litery_nie_slowa){
   wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
@@ -120,33 +138,19 @@ testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', pol
   wynik <- slowa(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
   return(wynik)
 }
+```
 
-#litery
-#zrobic observation - literami, na ich podstawie wygenerowac wystepujace litery.
-#sprawdzic co z polskimi znakami
-#przygotowac 2 stany
-#zrobic hmm
-#dac bauma-welsha
-#obejrzec
-#pomyslec jak zwizualizowac
 
-#s³owa
-#jakims str_sub ze stringr albo ze stringi wyciagnac sufiksy 3 literowe (sprawdzic jak w przypadku krotszych slow!)
-#juz mamy przygotowane observation w tym momencie
-#przygotowac 5 stanow
-#hmm
-#baum-welsh
-#obejrzec
-#wizualizacja
-
+```{r, echo = FALSE}
 #jak wytrenowanym zrobic nowy zbior - poszukac
 #wybrac wiersze
 #zasymulowac tym wyuczonym
 
-#raport np w markdownie i do pdf/html
 ```
-# Litery z polskimi znakami
-```{r}
+
+# Wyniki
+## Litery z polskimi znakami
+```{r, eval = FALSE, echo = FALSE}
 #litery
 system.time(lit_polskie <- testuj()) # z polskimi
 save(lit_polskie, file = "litery-polskie.RData")
@@ -159,8 +163,11 @@ cat(names(grupy[grupy<0]))
 xyplot (lit_polskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_polskie$hmm$emissionProbs))), type="h")
 xyplot (lit_polskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_polskie$hmm$emissionProbs))), type="h")
 ```
-# Litery bez polskich znaków
 ```{r}
+load("litery-polskie.RData")
+```
+# Litery bez polskich znaków
+```{r, eval = FALSE, echo = FALSE}
 lit_bezpolskie <- testuj(polskie = FALSE) #bez polskich
 save(lit_bezpolskie, file = "litery-bezpolskie.RData")
 grupy <- lit_bezpolskie$hmm$emissionProbs["1",]-lit_bezpolskie$hmm$emissionProbs["2",]
@@ -173,8 +180,11 @@ xyplot (lit_bezpolskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x
 xyplot (lit_bezpolskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
 #mozna jeszcze plotowac posteriori odjete i patrzec gdzie wiecej samoglosek
 ```
-# S³owa, bez polskich znaków
-```{r, eval = FALSE}
+```{r}
+load("litery-bezpolskie.RData")
+```
+# S³owa - sufiksy, klastrowane
+```{r, eval = FALSE, echo = FALSE}
 slowa_bezpolskie <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
 save(slowa_bezpolskie, file = "slowa.RData")
 grupy <- slowa_bezpolskie$hmm$emissionProbs["1",]
@@ -184,33 +194,12 @@ xyplot (slowa_bezpolskie$hmm$emissionProbs[3,] ~ c(1:length(grupy)), scales=list
 xyplot (slowa_bezpolskie$hmm$emissionProbs[4,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
 xyplot (slowa_bezpolskie$hmm$emissionProbs[5,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
 ```
-#Przygotowanie danych  
 
-Poniewa¿ ani R ani Python nie radzi³y sobie z usuwaniem niektórych znaków, usuniête zosta³y w notepadzie.  
-
-![R - nie](eR.PNG)
-![Python - nie](python.PNG)
-![Notepad++ na ratunek!](notepad.PNG)
-
-Przygotowanie danych wykonane jednak zosta³o g³ównie w R:  
-```{r, eval = FALSE}
-wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
-  plik <- readLines(nazwa_pliku) #wczytuje plik
-  Encoding(plik) <- 'UTF-8' #zmieniam kodowanie na odpowiednie
-  plik <- tryCatch(plik[1:which(plik == '-----')-1],error = function(e) plik, finally= {}) #usuwam wszystko po ----- (jeœli jest w pliku)
-  plik <- gsub("[[:punct:]…—[:digit:]]", "", plik) #usuwam wszystkie znaki przestankowe
-  plik <- tolower(plik[plik!=""]) #usuwam  puste
-  if(polskie){
-    cat('POLSKIE LITERY! ¹ê!')
-  } else {
-    plik <- iconv(plik,from="UTF-8",to="ASCII//TRANSLIT") #bez polskich
-  }
-  return(plik)
-}
+```{r}
+load("slowa.RData")
 ```
 
+#Symulowanie na ulubionej poezji wytrenowanymi modelami
 
-```{r, include = FALSE, echo = FALSE}
-#jesli chodzi o slowa, to mozliwe ze za male sa te prawdopodobienstwa ale jeszcze zobaczymy co wymyslimy jutro - moze jakies klastrowanie? moze jakies podmienianie?
-# albo zaraportowaæ i napisaæ ¿e sufiksy 2literowe lub zrobic klastrowanie sufiksów
+```{r}
 ```
