@@ -40,7 +40,6 @@ daj_symbole <- function(obserwacja){
   cat(length(obserwacja))
   #ta funkcja ekstrachuje wszystkie unikalne elementy - czyli dla nas symbole
   symbole <- sort(unique(obserwacja))
-  print(symbole)
   return(symbole)
 }
 ```
@@ -82,20 +81,33 @@ litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
 }
 
 klastruj <- function(obserwacja){
-  obserwacja[grepl("^[aeyiou][^aeyiou][aeyiou]$", obserwacja)]
+  obserwacja <- gsub ("^[aeyiou][^aeyiou][aeyiou]$", "ara", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][aeyiou][aeyiou]$", "aaa", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][^aeyiou][^aeyiou]$", "arr", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][aeyiou][^aeyiou]$", "aar", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][^aeyiou][aeyiou]$", "rra", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][aeyiou][aeyiou]$", "raa", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][aeyiou][^aeyiou]$", "rar", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][^aeyiou][^aeyiou]$", "rrr", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][^aeyiou]$", "rr", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][aeyiou]$", "aa", obserwacja)
+  obserwacja <- gsub ("^[aeyiou][^aeyiou]$", "ar", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou][aeyiou]$", "ra", obserwacja)
+  obserwacja <- gsub ("^[^aeyiou]$", "r", obserwacja)
+  obserwacja <- gsub ("^[aeyiou]$", "a", obserwacja)
+  #obserwacja[grepl("^[aeyiou][^aeyiou][aeyiou]$", obserwacja)]
   #i potem zamieniac na odpowiedni numerek
-  
+  return(obserwacja)
 }
 
 slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
   obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
-  obserwacja <- obserwacja[!is.na(obserwacja)][(1:50)]
+  obserwacja <- obserwacja[!is.na(obserwacja)][(1:5000)]
+  obserwacja <- klastruj(obserwacja)
   print(table(obserwacja))
-  #print(obserwacja)
-  #stany <- c('1','2','3','4','5')
-  stany <- c('pierwszy','drugi')
+  stany <- c('1','2','3','4','5')
   wynik <- symuluj(obserwacja,stany)
   return(wynik)
 }
@@ -156,15 +168,20 @@ print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
-xyplot (lit_bezpolskie$hmm$emissionProbs[1,] ~ c(1:27), scales=list(x=list(at=1:27, labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
-xyplot (lit_bezpolskie$hmm$emissionProbs[2,] ~ c(1:27), scales=list(x=list(at=1:27, labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (lit_bezpolskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (lit_bezpolskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
 #mozna jeszcze plotowac posteriori odjete i patrzec gdzie wiecej samoglosek
 ```
 # S³owa, bez polskich znaków
 ```{r, eval = FALSE}
 slowa_bezpolskie <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
 save(slowa_bezpolskie, file = "slowa.RData")
-slowa_bezpolskie
+grupy <- slowa_bezpolskie$hmm$emissionProbs["1",]
+xyplot (slowa_bezpolskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (slowa_bezpolskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (slowa_bezpolskie$hmm$emissionProbs[3,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (slowa_bezpolskie$hmm$emissionProbs[4,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
+xyplot (slowa_bezpolskie$hmm$emissionProbs[5,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
 ```
 #Przygotowanie danych  
 
