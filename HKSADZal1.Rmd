@@ -40,6 +40,7 @@ daj_symbole <- function(obserwacja){
   cat(length(obserwacja))
   #ta funkcja ekstrachuje wszystkie unikalne elementy - czyli dla nas symbole
   symbole <- sort(unique(obserwacja))
+  print(symbole)
   return(symbole)
 }
 ```
@@ -64,7 +65,7 @@ symuluj <- function(obserwacja,stany){
 
              emissionProbs=matrix(macierz_emisji,nrow = length(stany),ncol = length(symbole), byrow = TRUE))
   print('Hmm zrobiony')
-  print(hmm)
+  #print(hmm)
   wynik <- baumWelch(hmm,obserwacja)
   #post_prwdp <- posterior(wynik$hmm, obserwacja)
   return(wynik) #zwracam baumaWelcha calego
@@ -80,14 +81,21 @@ litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   return(wynik)
 }
 
+klastruj <- function(obserwacja){
+  obserwacja[grepl("^[aeyiou][^aeyiou][aeyiou]$", obserwacja)]
+  #i potem zamieniac na odpowiedni numerek
+  
+}
+
 slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
   obserwacja <- unlist(str_sub(plik[plik!=""],start=-3))
-  obserwacja <- obserwacja[!is.na(obserwacja)]
+  obserwacja <- obserwacja[!is.na(obserwacja)][(1:50)]
+  print(table(obserwacja))
   #print(obserwacja)
-  stany <- c('1','2','3','4','5')
-  #stany <- c('pierwszy','drugi')
+  #stany <- c('1','2','3','4','5')
+  stany <- c('pierwszy','drugi')
   wynik <- symuluj(obserwacja,stany)
   return(wynik)
 }
@@ -156,7 +164,7 @@ xyplot (lit_bezpolskie$hmm$emissionProbs[2,] ~ c(1:27), scales=list(x=list(at=1:
 ```{r, eval = FALSE}
 slowa_bezpolskie <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
 save(slowa_bezpolskie, file = "slowa.RData")
-head(slowa_bezpolskie$hmm$emissionProbs)
+slowa_bezpolskie
 ```
 #Przygotowanie danych  
 
