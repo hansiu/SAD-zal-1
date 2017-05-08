@@ -196,10 +196,28 @@ xyplot (slowa_bezpolskie$hmm$emissionProbs[5,] ~ c(1:length(grupy)), scales=list
 ```
 
 ```{r}
-load("slowa.RData")
+load("slowa-wiecej.RData")
+load("slowa-mniej.RData")
 ```
 
 #Symulowanie na ulubionej poezji wytrenowanymi modelami
 
 ```{r}
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dzabbersmok.txt',polskie=TRUE)
+obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+obserwacja <- obserwacja[!is.na(obserwacja)]
+post.prob.dzabber.pol <- posterior(lit_polskie$hmm, obserwacja)
+sum(post.prob.dzabber.pol[1,][grepl('[aeiouy¹êó]',obserwacja)])/sum(grepl('[aeiouy¹êó]',obserwacja)) #samogloski naleza do pierwszego z 96% prwdp!
+
+#bezpolskie
+
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dzabbersmok.txt',polskie=FALSE)
+obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+obserwacja <- obserwacja[!is.na(obserwacja)]
+post.prob.dzabber.bezpol <- posterior(lit_bezpolskie$hmm, obserwacja)
+sum(post.prob.dzabber.bezpol[2,][grepl('[aeiouy]',obserwacja)])/sum(grepl('[aeiouy]',obserwacja)) #samogloski naleza do drugiego z 95% prwdp!
+#wizualizacja - suma po samogloskach dla stanu 1? czy coœ
+#generalnie czy posterior prob wy¿sze w którymœ stanie wystêpuj¹ tam gdzie samogl
+
+
 ```
