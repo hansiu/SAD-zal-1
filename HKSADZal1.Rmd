@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ##wizualizacja za³adowanych
 ##opisaæ
 
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE}
 library(stringr)
 library(HMM)
 library(tm)
@@ -154,17 +154,21 @@ testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', pol
 #litery
 system.time(lit_polskie <- testuj()) # z polskimi
 save(lit_polskie, file = "litery-polskie.RData")
+
+```
+```{r}
+load("litery-polskie.RData")
 grupy <- lit_polskie$hmm$emissionProbs["1",]-lit_polskie$hmm$emissionProbs["2",]
 #jak ujemne to bardziej drugi
 print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
-xyplot (lit_polskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_polskie$hmm$emissionProbs))), type="h")
-xyplot (lit_polskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_polskie$hmm$emissionProbs))), type="h")
-```
-```{r}
-load("litery-polskie.RData")
+lit_p <- data.frame(colnames(lit_polskie$hmm$emissionProbs),lit_polskie$hmm$emissionProbs[1,],lit_polskie$hmm$emissionProbs[2,])
+rownames(lit_p) <- NULL
+names(lit_p) <- c('names','probs1','probs2')
+ggplot(lit_p, aes(names,probs1, fill=as.factor(names))) + geom_bar(stat="identity")
+ggplot(lit_p, aes(names,probs2, fill=as.factor(names))) + geom_bar(stat="identity")
 ```
 # Litery bez polskich znaków
 ```{r, eval = FALSE, echo = FALSE}
