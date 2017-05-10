@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ##wizualizacja za³adowanych
 ##opisaæ
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, include = FALSE}
 library(stringr)
 library(HMM)
 library(tm)
@@ -33,7 +33,7 @@ Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
 ![Notepad++ na ratunek!](notepad.PNG)
 
 ##Przygotowanie danych wykonane jednak zosta³o g³ównie w R:  
-```{r, eval = FALSE}
+```{r}
 wczytaj_i_przygotuj <- function(nazwa_pliku='pan-tadeusz.txt', polskie = TRUE){
   docs <- SimpleCorpus(DirSource("D:/studiaIIstopien/SADII/SAD-zal-1",encoding = 'UTF-8'),control = list(language = "pl"))
 docs <- tm_map(docs,removePunctuation)
@@ -53,7 +53,7 @@ plik <- plik[plik!=""] #usuwam  puste
 #Kod i symulacje
 
 ##Po przygotowaniu pliku, potrzebna nam bêdzie mo¿liwoœæ wyci¹gniêcia symboli z obserwacji:  
-```{r, eval = FALSE}
+```{r}
 daj_symbole <- function(obserwacja){
   cat('dlugosc obserwacji: ')
   cat(length(obserwacja))
@@ -64,7 +64,7 @@ daj_symbole <- function(obserwacja){
 ```
 
 ##Tworzenie HMM i trenowanie algorytmem Bauma-Welcha odbywa siê w ten sposób:
-```{r, eval = FALSE}
+```{r}
 prob <- function (x) {x / sum (x)} # funkcja pomocnicza
 
 symuluj <- function(obserwacja,stany){
@@ -85,7 +85,7 @@ symuluj <- function(obserwacja,stany){
 }
 ```
 ##Pe³na symulacja dla liter z przygotowanego pliku wygl¹da tak:  
-```{r, eval = FALSE}
+```{r}
 litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   obserwacja <- unlist(strsplit(przygotowany_plik, ''))
   obserwacja <- obserwacja[!is.na(obserwacja)]
@@ -95,7 +95,7 @@ litery <- function(przygotowany_plik=wczytaj_i_przygotuj()){
 }
 ```
 ##W przypadku s³ów konieczne by³o klastrowanie, poniewa¿ inaczej algorytm Bauma-Welcha nie dawa³ sobie rady. Sufiksy max-3literowe poklastrowane zosta³y po ich d³ugoœci oraz umiejscowieniu samog³osek/spó³g³osek - ³¹cznie 14 klastrów.
-```{r, eval = FALSE}
+```{r}
 klastruj <- function(obserwacja){
   obserwacja <- gsub ("^[aeyiou][^aeyiou][aeyiou]$", "ara", obserwacja)
     #obserwacja[grepl("^[aeyiou][^aeyiou][aeyiou]$", obserwacja)] ¿eby sobie wyœwietliæ
@@ -116,7 +116,7 @@ klastruj <- function(obserwacja){
 }
 ```
 ##Sposób symulacji dla s³ów jest nastêpuj¹cy:  
-```{r, eval = FALSE}
+```{r}
 slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
   #s³owa wymagaj¹ trochê wiêcej przygotowañ
   plik <- unlist(strsplit(przygotowany_plik," "))
@@ -130,7 +130,7 @@ slowa <- function(przygotowany_plik=wczytaj_i_przygotuj()){
 }
 ```
 
-```{r, eval = FALSE, echo = FALSE}
+```{r, echo = FALSE}
 testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', polskie = TRUE){
   if(litery_nie_slowa){
   wynik <- litery(wczytaj_i_przygotuj(nazwa_pliku, polskie))}
@@ -140,76 +140,143 @@ testuj <- function(litery_nie_slowa = TRUE, nazwa_pliku = 'pan-tadeusz.txt', pol
 }
 ```
 
-
-```{r, echo = FALSE}
-#jak wytrenowanym zrobic nowy zbior - poszukac
-#wybrac wiersze
-#zasymulowac tym wyuczonym
-
-```
-
 # Wyniki
 ## Litery z polskimi znakami
-```{r, eval = FALSE, echo = FALSE}
+```{r, eval = FALSE, echo = FALSE, include = FALSE}
 #litery
 system.time(lit_polskie <- testuj()) # z polskimi
 save(lit_polskie, file = "litery-polskie.RData")
 
 ```
-```{r}
+```{r, echo = FALSE, include = FALSE}
 load("litery-polskie.RData")
 grupy <- lit_polskie$hmm$emissionProbs["1",]-lit_polskie$hmm$emissionProbs["2",]
 #jak ujemne to bardziej drugi
-print('To jest grupa pierwsza:')
-cat(names(grupy[grupy>=0]))
-print('To jest grupa druga:')
-cat(names(grupy[grupy<0]))
 lit_p <- data.frame(colnames(lit_polskie$hmm$emissionProbs),lit_polskie$hmm$emissionProbs[1,],lit_polskie$hmm$emissionProbs[2,],grepl("[a¹eêioóuy]",colnames(lit_polskie$hmm$emissionProbs)))
 rownames(lit_p) <- NULL
 names(lit_p) <- c('names','probs1','probs2','vowel')
-ggplot(lit_p, aes(names,probs1, fill=vowel)) + geom_bar(stat="identity")
-ggplot(lit_p, aes(names,probs2, fill=vowel)) + geom_bar(stat="identity")
 ```
-# Litery bez polskich znaków
-```{r, eval = FALSE, echo = FALSE}
-lit_bezpolskie <- testuj(polskie = FALSE) #bez polskich
-save(lit_bezpolskie, file = "litery-bezpolskie.RData")
-```
-```{r}
-load("litery-bezpolskie.RData")
-grupy <- lit_bezpolskie$hmm$emissionProbs["1",]-lit_bezpolskie$hmm$emissionProbs["2",]
-#jak ujemne to bardziej drugi
+```{r, echo = FALSE, include = TRUE}
 print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
+ggplot(lit_p, aes(names,probs1, fill=vowel)) + geom_bar(stat="identity") + ggtitle ("Z polskimi znakami: Pierwszy stan - samog³oski")
+ggplot(lit_p, aes(names,probs2, fill=vowel)) + geom_bar(stat="identity") + ggtitle ("Z polskimi znakami: Drugi stan - spó³g³oski")
+```
+# Litery bez polskich znaków
+```{r, eval = FALSE, echo = FALSE, include = FALSE}
+lit_bezpolskie <- testuj(polskie = FALSE) #bez polskich
+save(lit_bezpolskie, file = "litery-bezpolskie.RData")
+```
+```{r, echo = FALSE, include = FALSE}
+load("litery-bezpolskie.RData")
+grupy <- lit_bezpolskie$hmm$emissionProbs["1",]-lit_bezpolskie$hmm$emissionProbs["2",]
+#jak ujemne to bardziej drugi
 lit_bp <- data.frame(colnames(lit_bezpolskie$hmm$emissionProbs),lit_bezpolskie$hmm$emissionProbs[1,],lit_bezpolskie$hmm$emissionProbs[2,],grepl("[aeiouy]",colnames(lit_bezpolskie$hmm$emissionProbs)))
 rownames(lit_bp) <- NULL
 names(lit_bp) <- c('names','probs1','probs2','vowel')
-ggplot(lit_bp, aes(names,probs1, fill=vowel)) + geom_bar(stat="identity")
-ggplot(lit_bp, aes(names,probs2, fill=vowel)) + geom_bar(stat="identity")
+```
+```{r, echo = FALSE, include = TRUE}
+print('To jest grupa pierwsza:')
+cat(names(grupy[grupy>=0]))
+print('To jest grupa druga:')
+cat(names(grupy[grupy<0]))
+ggplot(lit_bp, aes(names,probs1, fill=vowel)) + geom_bar(stat="identity") + ggtitle ("Bez polskich znaków: Pierwszy stan - samog³oski")
+ggplot(lit_bp, aes(names,probs2, fill=vowel)) + geom_bar(stat="identity") + ggtitle ("Bez polskich znaków: Drugi stan - spó³g³oski")
 ```
 # S³owa - sufiksy, klastrowane
-```{r, eval = FALSE, echo = FALSE}
+```{r, eval = FALSE, echo = FALSE, include = FALSE}
 slowa_bezpolskie <- testuj(litery_nie_slowa = FALSE,polskie=FALSE)
 save(slowa_bezpolskie, file = "slowa.RData")
 grupy <- slowa_bezpolskie$hmm$emissionProbs["1",]
-xyplot (slowa_bezpolskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
-xyplot (slowa_bezpolskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
-xyplot (slowa_bezpolskie$hmm$emissionProbs[3,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
-xyplot (slowa_bezpolskie$hmm$emissionProbs[4,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
-xyplot (slowa_bezpolskie$hmm$emissionProbs[5,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (slowa_bezpolskie$hmm$emissionProbs))), type="h")
 ```
 
-```{r}
+```{r, echo = FALSE, include = FALSE}
 load("slowa-wiecej.RData")
+#load("slowa-mniej.RData")
+slowa_bp <- data.frame(colnames(slowa_bezpolskie$hmm$emissionProbs),slowa_bezpolskie$hmm$emissionProbs[1,],slowa_bezpolskie$hmm$emissionProbs[2,],slowa_bezpolskie$hmm$emissionProbs[3,],slowa_bezpolskie$hmm$emissionProbs[4,],slowa_bezpolskie$hmm$emissionProbs[5,])
+rownames(slowa_bp) <- NULL
+names(slowa_bp) <- c('names','probs1','probs2','probs3','probs4','probs5')
+```
+##Piêæ stanów - wiêcej sufiksów:  
+```{r, echo = FALSE, include = TRUE}
+
+ggplot(slowa_bp, aes(names,probs1, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Pierwszy stan")
+ggplot(slowa_bp, aes(names,probs2, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Drugi stan")
+ggplot(slowa_bp, aes(names,probs3, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Trzeci stan")
+ggplot(slowa_bp, aes(names,probs4, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Czwarty stan")
+ggplot(slowa_bp, aes(names,probs5, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Pi¹ty stan")
+```
+
+```{r, echo = FALSE, include = FALSE}
+#load("slowa-wiecej.RData")
 load("slowa-mniej.RData")
+slowa_bp <- data.frame(colnames(slowa_bezpolskie$hmm$emissionProbs),slowa_bezpolskie$hmm$emissionProbs[1,],slowa_bezpolskie$hmm$emissionProbs[2,],slowa_bezpolskie$hmm$emissionProbs[3,],slowa_bezpolskie$hmm$emissionProbs[4,],slowa_bezpolskie$hmm$emissionProbs[5,])
+rownames(slowa_bp) <- NULL
+names(slowa_bp) <- c('names','probs1','probs2','probs3','probs4','probs5')
+```
+##Piêæ stanów - mniej sufiksów:  
+```{r, echo = FALSE, include = TRUE}
+
+ggplot(slowa_bp, aes(names,probs1, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Pierwszy stan")
+ggplot(slowa_bp, aes(names,probs2, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Drugi stan")
+ggplot(slowa_bp, aes(names,probs3, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Trzeci stan")
+ggplot(slowa_bp, aes(names,probs4, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Czwarty stan")
+ggplot(slowa_bp, aes(names,probs5, fill=as.factor(names))) + geom_bar(stat="identity") + ggtitle ("S³owa bez polskich znaków: Pi¹ty stan")
 ```
 
 #Symulowanie na ulubionej poezji wytrenowanymi modelami
 
-```{r}
+## D¿abbersmok
+```{r dzabbersmok, echo = FALSE, include = TRUE}
 przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dzabbersmok.txt',polskie=TRUE)
+obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+obserwacja <- obserwacja[!is.na(obserwacja)]
+post.prob.dzabber.pol <- posterior(lit_polskie$hmm, obserwacja)
+suma_dzabber.pol <- sum(post.prob.dzabber.pol[1,][grepl('[aeiouy¹êó]',obserwacja)])/sum(grepl('[aeiouy¹êó]',obserwacja)) #samogloski naleza do pierwszego z 96% prwdp!
+suma_dzabber.pol <- round(suma_dzabber.pol, 4)
+
+#bezpolskie
+
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dzabbersmok.txt',polskie=FALSE)
+obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+obserwacja <- obserwacja[!is.na(obserwacja)]
+post.prob.dzabber.bezpol <- posterior(lit_bezpolskie$hmm, obserwacja)
+suma_dzabber.bezpol <-sum(post.prob.dzabber.bezpol[2,][grepl('[aeiouy]',obserwacja)])/sum(grepl('[aeiouy]',obserwacja)) #samogloski naleza do drugiego z 95% prwdp!
+suma_dzabber.bezpol <- round(suma_dzabber.bezpol, 4)
+#wizualizacja - suma po samogloskach dla stanu 1? czy coœ
+#generalnie czy posterior prob wy¿sze w którymœ stanie wystêpuj¹ tam gdzie samogl
+
+```
+```{r, echo = FALSE, include = TRUE}
+df <- data.frame(c(100*suma_dzabber.pol,100*(1-suma_dzabber.pol)),c('TRUE','FALSE'))
+names(df) <- c('value','vowel')
+ggplot(df, aes(x="",y = value,fill=vowel)) + geom_bar(stat = 'identity', position = 'stack', width = 1) + coord_polar(theta = 'y') + theme(axis.ticks=element_blank(), axis.text.y=element_blank(), axis.text.x=element_blank(), axis.title=element_blank(), panel.grid.major=element_blank(), panel.grid.minor=element_blank(), panel.border=element_blank()) + geom_label(aes(label = value), size=5, show.legend = F, nudge_x = 1)
+```
+## Dziewczyna
+```{r dziewczyna, echo = FALSE, include = TRUE}
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dziewczyna.txt',polskie=TRUE)
+obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+obserwacja <- obserwacja[!is.na(obserwacja)]
+post.prob.dzabber.pol <- posterior(lit_polskie$hmm, obserwacja)
+sum(post.prob.dzabber.pol[1,][grepl('[aeiouy¹êó]',obserwacja)])/sum(grepl('[aeiouy¹êó]',obserwacja)) #samogloski naleza do pierwszego z 95% prwdp!
+
+#bezpolskie
+
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dziewczyna.txt',polskie=FALSE)
+obserwacja <- unlist(strsplit(przygotowany_plik, ''))
+obserwacja <- obserwacja[!is.na(obserwacja)]
+post.prob.dzabber.bezpol <- posterior(lit_bezpolskie$hmm, obserwacja)
+sum(post.prob.dzabber.bezpol[2,][grepl('[aeiouy]',obserwacja)])/sum(grepl('[aeiouy]',obserwacja)) #samogloski naleza do drugiego z 95% prwdp!
+#wizualizacja - suma po samogloskach dla stanu 1? czy coœ
+#generalnie czy posterior prob wy¿sze w którymœ stanie wystêpuj¹ tam gdzie samogl
+
+
+```
+## Do prostego cz³owieka
+```{r do-prostego-czlowieka, echo = FALSE, include = TRUE}
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'do-prostego-czlowieka.txt',polskie=TRUE)
 obserwacja <- unlist(strsplit(przygotowany_plik, ''))
 obserwacja <- obserwacja[!is.na(obserwacja)]
 post.prob.dzabber.pol <- posterior(lit_polskie$hmm, obserwacja)
@@ -217,7 +284,7 @@ sum(post.prob.dzabber.pol[1,][grepl('[aeiouy¹êó]',obserwacja)])/sum(grepl('[aeio
 
 #bezpolskie
 
-przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'dzabbersmok.txt',polskie=FALSE)
+przygotowany_plik <- wczytaj_i_przygotuj(nazwa_pliku = 'do-prostego-czlowieka.txt',polskie=FALSE)
 obserwacja <- unlist(strsplit(przygotowany_plik, ''))
 obserwacja <- obserwacja[!is.na(obserwacja)]
 post.prob.dzabber.bezpol <- posterior(lit_bezpolskie$hmm, obserwacja)
