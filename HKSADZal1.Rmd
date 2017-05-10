@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(stringr)
 library(HMM)
 library(tm)
-library(lattice)
+library(ggplot2)
 
 Sys.setlocale("LC_CTYPE", "polish") #konieczne ¿eby mi dzia³a³y polskie znaki
 ```
@@ -164,28 +164,30 @@ print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
-lit_p <- data.frame(colnames(lit_polskie$hmm$emissionProbs),lit_polskie$hmm$emissionProbs[1,],lit_polskie$hmm$emissionProbs[2,])
+lit_p <- data.frame(colnames(lit_polskie$hmm$emissionProbs),lit_polskie$hmm$emissionProbs[1,],lit_polskie$hmm$emissionProbs[2,],grepl("[a¹eêioóuy]",colnames(lit_polskie$hmm$emissionProbs)))
 rownames(lit_p) <- NULL
-names(lit_p) <- c('names','probs1','probs2')
-ggplot(lit_p, aes(names,probs1, fill=as.factor(names))) + geom_bar(stat="identity")
-ggplot(lit_p, aes(names,probs2, fill=as.factor(names))) + geom_bar(stat="identity")
+names(lit_p) <- c('names','probs1','probs2','vowel')
+ggplot(lit_p, aes(names,probs1, fill=vowel)) + geom_bar(stat="identity")
+ggplot(lit_p, aes(names,probs2, fill=vowel)) + geom_bar(stat="identity")
 ```
 # Litery bez polskich znaków
 ```{r, eval = FALSE, echo = FALSE}
 lit_bezpolskie <- testuj(polskie = FALSE) #bez polskich
 save(lit_bezpolskie, file = "litery-bezpolskie.RData")
+```
+```{r}
+load("litery-bezpolskie.RData")
 grupy <- lit_bezpolskie$hmm$emissionProbs["1",]-lit_bezpolskie$hmm$emissionProbs["2",]
 #jak ujemne to bardziej drugi
 print('To jest grupa pierwsza:')
 cat(names(grupy[grupy>=0]))
 print('To jest grupa druga:')
 cat(names(grupy[grupy<0]))
-xyplot (lit_bezpolskie$hmm$emissionProbs[1,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
-xyplot (lit_bezpolskie$hmm$emissionProbs[2,] ~ c(1:length(grupy)), scales=list(x=list(at=1:length(grupy), labels=colnames (lit_bezpolskie$hmm$emissionProbs))), type="h")
-#mozna jeszcze plotowac posteriori odjete i patrzec gdzie wiecej samoglosek
-```
-```{r}
-load("litery-bezpolskie.RData")
+lit_bp <- data.frame(colnames(lit_bezpolskie$hmm$emissionProbs),lit_bezpolskie$hmm$emissionProbs[1,],lit_bezpolskie$hmm$emissionProbs[2,],grepl("[aeiouy]",colnames(lit_bezpolskie$hmm$emissionProbs)))
+rownames(lit_bp) <- NULL
+names(lit_bp) <- c('names','probs1','probs2','vowel')
+ggplot(lit_bp, aes(names,probs1, fill=vowel)) + geom_bar(stat="identity")
+ggplot(lit_bp, aes(names,probs2, fill=vowel)) + geom_bar(stat="identity")
 ```
 # S³owa - sufiksy, klastrowane
 ```{r, eval = FALSE, echo = FALSE}
